@@ -2,11 +2,16 @@ import tkinter as tk
 from tkinter import ttk
 from PIL import Image, ImageTk
 import os
+import pandas as pd
+from matplotlib.figure import Figure
+from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 import serial
 import json
 
 # Folder z obrazami
 IMAGES_FOLDER = "./images"
+CSV_FOLDER = "./csv"
+CSV_FILE = os.path.join(CSV_FOLDER, "trajectory.csv")  # Ścieżka do pliku CSV z danymi
 
 # Funkcja do ładowania obrazów
 def load_images():
@@ -33,17 +38,14 @@ def update_table(data):
         table.delete(row)
 
     for idx, entry in enumerate(data.get("lastMessageTimes", []), start=1):
-        # Wydobycie danych, z domyślnymi wartościami na wypadek braku danych
         node_id = entry.get("node", "Brak danych")
         time_since = entry.get("timeSinceLastMessage", "Brak danych")
         alarm = entry.get("alarm", False)
         distance = entry.get("distance", None)
         status = entry.get("status", None)
 
-        # Pobieranie obrazu na podstawie indeksu
         img = images.get(idx, None)
 
-        # Tworzenie wiersza z obrazem w osobnej kolumnie
         if img:
             img_label = tk.Label(image_column, image=img)
             img_label.grid(row=idx, column=0, padx=5, pady=5)
@@ -58,7 +60,6 @@ def update_table(data):
             status_label = tk.Label(image_column, text=f"Status: \n{status}" if status is not None else "", font=("Arial", 12))
             status_label.grid(row=idx, column=5, padx=5, pady=5)
 
-        # Dodanie wiersza do tabeli
         table.insert("", tk.END, values=(
             f"{node_id}",
             f"{time_since} ms",
@@ -82,41 +83,69 @@ def start_serial_read():
     except Exception as e:
         print(f"Błąd podczas odczytu z portu szeregowego: {e}")
     
-    # Wywołanie ponowne po 100 ms
     root.after(100, start_serial_read)
 
+# Funkcja do tworzenia wykresu 3D na podstawie danych z pliku CSV
+def create_3d_plot_from_csv(csv_file):
+    try:
+        # Odczyt danych z CSV
+        df = pd.read_csv(csv_file)
+
+        fig = Figure(figsize=(7, 6), dpi=100)
+        ax = fig.add_subplot(111, projection='3d')
+
+        # Wykres trajektorii
+        sc = ax.scatter(df['x'], df['y'], df['z'], c=df['time'], cmap='viridis', label='Trajektoria 3D')
+        ax.set_title("Trajektoria ruchu strażaka w czasie")
+        ax.set_xlabel("X")
+        ax.set_ylabel("Y")
+        ax.set_zlabel("Z")
+        fig.colorbar(sc, ax=ax, label='Czas')
+
+        return fig
+    except Exception as e:
+        print(f"Błąd podczas tworzenia wykresu 3D: {e}")
+        return None
+
 # Konfiguracja portu szeregowego
-port = "/dev/tty.wchusbserial585A0076601"  # Ustaw swój port
-baud_rate = 115200                         # Ustawioną szybkość transmisji
+port = "/dev/tty.wchusbserial585A0076601"
+baud_rate = 115200
 ser = serial.Serial(port, baud_rate, timeout=1)
 
 # Tworzenie GUI za pomocą Tkinter
 root = tk.Tk()
-root.title("Tabela JSON z obrazami")
+root.title("Tabela JSON z obrazami i wykresem 3D")
 
 # Ustawienie rozmiaru okna
 root.geometry("1280x720")
 
-# Załadowanie obrazów
 images = load_images()
 
-# Główne ramki
+# Ramka na obrazy
 image_column = tk.Frame(root)
 image_column.grid(row=0, column=0, padx=10, pady=10, sticky="n")
 
+# Ramka na tabelę
 table_frame = tk.Frame(root)
 table_frame.grid(row=0, column=1, padx=10, pady=10, sticky="n")
 
-# Tabela z danymi
-table = ttk.Treeview(table_frame, columns=["Node", "Time", "Alarm"], show="headings", height=10)
-table.heading("Node", text="Węzeł")
-table.heading("Time", text="Czas")
-table.heading("Alarm", text="Alarm")
+table = ttk.Treeview(table_frame, columns=["Node", "Time", "Alarm", "Distance", "Status"], show="headings", height=10)
+
+# Tworzenie ramki na wykres 3D
+plot_frame = tk.Frame(root)
+plot_frame.grid(row=0, column=2, columnspan=2, padx=10, pady=10)
+
+# Dodanie wykresu 3D do ramki
+figure = create_3d_plot_from_csv(CSV_FILE)
+if figure:
+    canvas = FigureCanvasTkAgg(figure, master=plot_frame)
+    canvas_widget = canvas.get_tk_widget()
+    canvas_widget.pack()
 
 # Rozpocznij odczyt danych z portu szeregowego
 root.after(100, start_serial_read)
 
-# Uruchom pętlę Tkinter
+# Uruchomienie głównej pętli Tkinter
 root.mainloop()
 
 # Zamknięcie portu po zamknięciu GUI

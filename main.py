@@ -48,11 +48,11 @@ def update_table(data):
             text_label.grid(row=idx, column=1, padx=5, pady=5)
             time_label = tk.Label(image_column, text=f"Czas: \n{time_since} ms", font=("Arial", 12))
             time_label.grid(row=idx, column=2, padx=5, pady=5)
-            alarm_label = tk.Label(image_column, text=f"Alarm: \n{'Tak' if alarm else 'Nie'}", font=("Arial", 12))
+            alarm_label = tk.Label(image_column, text=f"Alarm: \n{alarm}", font=("Arial", 12))
             alarm_label.grid(row=idx, column=3, padx=5, pady=5)
 
         # Dodanie wiersza do tabeli
-        table.insert("", tk.END, values=(f"{node_id}", f"{time_since} ms", "Tak" if alarm else "Nie"))
+        table.insert("", tk.END, values=(f"{node_id}", f"{time_since} ms", f"{alarm}"))
 
 # Funkcja do odczytu danych z portu szeregowego
 def start_serial_read():
@@ -61,6 +61,7 @@ def start_serial_read():
             line = ser.readline().decode('utf-8').strip()
             try:
                 data = json.loads(line)
+                print(data)
                 if "lastMessageTimes" in data:
                     update_table(data)
             except json.JSONDecodeError:

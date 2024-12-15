@@ -32,10 +32,13 @@ def update_table(data):
     for row in table.get_children():
         table.delete(row)
 
-    for idx, entry in enumerate(data["lastMessageTimes"], start=1):
-        node_id = entry["node"]
-        time_since = entry["timeSinceLastMessage"]
-        alarm = entry.get("alarm", False)  # Pobieramy flagę alarmową (domyślnie False)
+    for idx, entry in enumerate(data.get("lastMessageTimes", []), start=1):
+        # Wydobycie danych, z domyślnymi wartościami na wypadek braku danych
+        node_id = entry.get("node", "Brak danych")
+        time_since = entry.get("timeSinceLastMessage", "Brak danych")
+        alarm = entry.get("alarm", False)
+        distance = entry.get("distance", None)
+        status = entry.get("status", None)
 
         # Pobieranie obrazu na podstawie indeksu
         img = images.get(idx, None)
@@ -50,9 +53,19 @@ def update_table(data):
             time_label.grid(row=idx, column=2, padx=5, pady=5)
             alarm_label = tk.Label(image_column, text=f"Alarm: \n{alarm}", font=("Arial", 12))
             alarm_label.grid(row=idx, column=3, padx=5, pady=5)
+            distance_label = tk.Label(image_column, text=f"Distance: \n{distance}" if distance is not None else "", font=("Arial", 12))
+            distance_label.grid(row=idx, column=4, padx=5, pady=5)
+            status_label = tk.Label(image_column, text=f"Status: \n{status}" if status is not None else "", font=("Arial", 12))
+            status_label.grid(row=idx, column=5, padx=5, pady=5)
 
         # Dodanie wiersza do tabeli
-        table.insert("", tk.END, values=(f"{node_id}", f"{time_since} ms", f"{alarm}"))
+        table.insert("", tk.END, values=(
+            f"{node_id}",
+            f"{time_since} ms",
+            f"{alarm}",
+            f"{distance if distance is not None else ''}",
+            f"{status if status is not None else ''}"
+        ))
 
 # Funkcja do odczytu danych z portu szeregowego
 def start_serial_read():

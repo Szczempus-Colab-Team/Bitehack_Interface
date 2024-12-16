@@ -114,7 +114,7 @@ ser = serial.Serial(port, baud_rate, timeout=1)
 
 # Tworzenie GUI za pomocą Tkinter
 root = tk.Tk()
-root.title("Tabela JSON z obrazami i wykresem 3D")
+root.title("Lista strażaków i wykresem 3D")
 
 # Ustawienie rozmiaru okna
 root.geometry("1280x720")
